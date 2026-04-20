@@ -120,10 +120,10 @@
             <button onclick="setLang('ar')" class="lang-btn">AR</button>
           </div>
           <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀️</button>
-          <div class="user-chip">
+          <div class="user-chip" onclick="openAccountModal()" title="Manage account">
             <span class="user-avatar" id="user-avatar">?</span>
             <span id="user-name-display">User</span>
-            <button class="logout-btn" onclick="handleLogout()" data-i18n="logout">Logout</button>
+            <button class="logout-btn" onclick="event.stopPropagation();handleLogout()" data-i18n="logout">Logout</button>
           </div>
         </div>
       </div>
@@ -245,7 +245,14 @@
           </div>
           <div class="card chat-card">
             <div class="card-header"><span class="card-icon">💬</span><h3 data-i18n="hr_chat_list">Employee Messages</h3></div>
+            <div class="employee-tabs" id="hr-employee-tabs">
+              <p class="empty-msg" data-i18n="empty">No data yet.</p>
+            </div>
             <div class="chat-box" id="hr-chat-display"></div>
+            <div class="chat-input-row hidden" id="hr-reply-row">
+              <input type="text" id="hr-reply-input" class="input chat-input" placeholder="Reply to employee..." onkeydown="if(event.key==='Enter')sendHrReply()" />
+              <button class="btn-send" onclick="sendHrReply()">Reply</button>
+            </div>
           </div>
           <div class="card">
             <div class="card-header"><span class="card-icon">📊</span><h3 data-i18n="hr_mood_log">Mood Log</h3></div>
@@ -256,6 +263,50 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- ACCOUNT MODAL -->
+  <div id="account-modal" class="modal-overlay hidden" onclick="closeAccountModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ My Account</h3>
+        <button class="modal-close-btn" onclick="closeAccountModal()">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <div class="modal-inline-row">
+            <input type="text" id="acct-name" class="input" placeholder="Your name" />
+            <button class="btn-send" onclick="saveAccountName()">Save</button>
+          </div>
+          <div id="acct-name-msg" class="feedback-msg"></div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <div class="form-group">
+          <label class="form-label">Current Password</label>
+          <input type="password" id="acct-cur-pass" class="input" placeholder="Enter current password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input type="password" id="acct-new-pass" class="input" placeholder="New password (min 6 chars)" />
+        </div>
+        <button class="btn-primary" onclick="saveAccountPassword()">Change Password</button>
+        <div id="acct-pass-msg" class="feedback-msg"></div>
+
+        <div id="acct-hr-section" class="hidden">
+          <div class="modal-divider"></div>
+          <label class="form-label" style="display:block;margin-bottom:8px">Manage Employee Accounts</label>
+          <div id="acct-user-list" class="list-container" style="max-height:200px"></div>
+        </div>
+
+        <div class="modal-divider"></div>
+        <button class="btn-danger" onclick="confirmDeleteAccount()">🗑 Delete My Account</button>
+
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>
