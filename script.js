@@ -139,9 +139,10 @@ const translations = {
 // =====================
 // STATE
 // =====================
-let currentLang = 'en';
-let selectedMood = null;
-let currentUser = null;
+let currentLang   = 'en';
+let selectedMood  = null;
+let currentUser   = null;
+let activeHrThread = null;
 const MOOD_SCORES = { sad:1, neutral:2, happy:3 };
 const MOOD_EMOJIS = { sad:'😢', neutral:'😐', happy:'😄' };
 
@@ -149,18 +150,14 @@ const MOOD_EMOJIS = { sad:'😢', neutral:'😐', happy:'😄' };
 // THEME
 // =====================
 function toggleTheme() {
-  const html = document.documentElement;
-  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('wp_theme', next);
   updateThemeIcons(next);
 }
-
 function updateThemeIcons(theme) {
-  const icon = theme === 'dark' ? '☀️' : '🌙';
-  document.querySelectorAll('.theme-toggle').forEach(btn => btn.textContent = icon);
+  document.querySelectorAll('.theme-toggle').forEach(btn => btn.textContent = theme === 'dark' ? '☀️' : '🌙');
 }
-
 function loadTheme() {
   const saved = localStorage.getItem('wp_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
@@ -173,7 +170,6 @@ function loadTheme() {
 function t(key) {
   return (translations[currentLang] && translations[currentLang][key]) || key;
 }
-
 function setLang(lang) {
   currentLang = lang;
   const isRTL = lang === 'ar';
@@ -200,17 +196,13 @@ function showAuthPanel(panel) {
     if (el) { el.textContent = ''; el.classList.add('hidden'); }
   });
 }
-
 function showAuthError(id, msg) {
   const el = document.getElementById(id);
   if (el) { el.textContent = msg; el.classList.remove('hidden'); }
 }
-
 function toggleHrCode() {
-  const role = document.getElementById('signup-role').value;
-  document.getElementById('hr-code-group').classList.toggle('hidden', role !== 'hr');
+  document.getElementById('hr-code-group').classList.toggle('hidden', document.getElementById('signup-role').value !== 'hr');
 }
-
 function toggleEye(inputId, btn) {
   const input = document.getElementById(inputId);
   if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
@@ -231,8 +223,8 @@ function findAccount(id) { return getAccounts().find(a => a.id === id.trim().toL
 // =====================
 function handleLogin() {
   const identifier = document.getElementById('login-id').value.trim().toLowerCase();
-  const password = document.getElementById('login-pass').value;
-  const remember = document.getElementById('remember-me').checked;
+  const password   = document.getElementById('login-pass').value;
+  const remember   = document.getElementById('remember-me').checked;
   if (!identifier || !password) { showAuthError('login-error', t('err_login_invalid')); return; }
   const account = findAccount(identifier);
   if (!account || account.password !== password) { showAuthError('login-error', t('err_login_invalid')); return; }
@@ -243,11 +235,11 @@ function handleLogin() {
 // SIGNUP
 // =====================
 function handleSignup() {
-  const name = document.getElementById('signup-name').value.trim();
+  const name       = document.getElementById('signup-name').value.trim();
   const identifier = document.getElementById('signup-id').value.trim().toLowerCase();
-  const password = document.getElementById('signup-pass').value;
-  const role = document.getElementById('signup-role').value;
-  const hrCode = document.getElementById('hr-code').value;
+  const password   = document.getElementById('signup-pass').value;
+  const role       = document.getElementById('signup-role').value;
+  const hrCode     = document.getElementById('hr-code').value;
 
   if (!name || !identifier || !password) { showAuthError('signup-error', t('err_signup_empty')); return; }
   if (password.length < 6) { showAuthError('signup-error', t('err_pass_short')); return; }
@@ -268,29 +260,21 @@ function handleSignup() {
 function startSession(account, remember) {
   currentUser = account;
   const data = JSON.stringify({ id: account.id, role: account.role, name: account.name });
-  if (remember) {
-    localStorage.setItem('wp_session', data);
-  } else {
-    sessionStorage.setItem('wp_session', data);
-    localStorage.removeItem('wp_session');
-  }
+  if (remember) { localStorage.setItem('wp_session', data); }
+  else { sessionStorage.setItem('wp_session', data); localStorage.removeItem('wp_session'); }
   launchApp(account);
 }
-
 function loadSession() {
   try {
     const raw = localStorage.getItem('wp_session') || sessionStorage.getItem('wp_session');
     if (!raw) return null;
-    const session = JSON.parse(raw);
-    return findAccount(session.id) || null;
+    return findAccount(JSON.parse(raw).id) || null;
   } catch { return null; }
 }
-
 function handleLogout() {
   localStorage.removeItem('wp_session');
   sessionStorage.removeItem('wp_session');
-  currentUser = null;
-  selectedMood = null;
+  currentUser = null; selectedMood = null; activeHrThread = null;
   document.getElementById('app').classList.add('hidden');
   document.getElementById('auth-screen').classList.remove('hidden');
   showAuthPanel('login');
@@ -319,7 +303,7 @@ function launchApp(account) {
     document.getElementById('btn-hr').classList.add('hidden');
     document.getElementById('btn-employee').classList.remove('hidden');
     showSection('employee');
-    renderChat('chat-display', getAllChats().filter(c => c.userId === account.id));
+    renderEmployeeChat();
   }
 }
 
@@ -344,7 +328,6 @@ function selectMood(mood) {
     btn.classList.toggle('selected', btn.getAttribute('data-mood') === mood);
   });
 }
-
 function submitMood() {
   if (!selectedMood) { showFeedback('mood-feedback', t('err_select_mood'), 'error'); return; }
   const moods = getAllMoods();
@@ -359,15 +342,15 @@ function submitMood() {
 // VACATION
 // =====================
 function submitVacation() {
-  const from = document.getElementById('vacation-from').value;
-  const to = document.getElementById('vacation-to').value;
+  const from   = document.getElementById('vacation-from').value;
+  const to     = document.getElementById('vacation-to').value;
   const reason = document.getElementById('vacation-reason').value.trim();
   if (!from || !to || !reason) { showFeedback('vacation-feedback', t('err_fill_fields'), 'error'); return; }
   const reqs = getAllVacations();
   reqs.push({ userId: currentUser.id, name: currentUser.name, from, to, reason, time: new Date().toLocaleString() });
   saveStorage('vacations', reqs);
   document.getElementById('vacation-from').value = '';
-  document.getElementById('vacation-to').value = '';
+  document.getElementById('vacation-to').value   = '';
   document.getElementById('vacation-reason').value = '';
   showFeedback('vacation-feedback', t('feedback_vacation'), 'success');
 }
@@ -386,20 +369,103 @@ function submitComplaint() {
 }
 
 // =====================
-// CHAT
+// EMPLOYEE CHAT
 // =====================
 function sendChat() {
   const input = document.getElementById('chat-input');
-  const msg = input.value.trim();
+  const msg   = input.value.trim();
   if (!msg) return;
   const chats = getAllChats();
-  chats.push({ userId: currentUser.id, userName: currentUser.name, msg, time: new Date().toLocaleString() });
+  chats.push({ userId: currentUser.id, userName: currentUser.name, msg, fromHR: false, time: new Date().toLocaleString() });
   saveStorage('chats', chats);
   input.value = '';
-  renderChat('chat-display', chats.filter(c => c.userId === currentUser.id));
+  renderEmployeeChat();
 }
 
-function renderChat(containerId, msgs) {
+function renderEmployeeChat() {
+  const chats   = getAllChats();
+  const myId    = currentUser.id;
+  const visible = chats.filter(c => (!c.fromHR && c.userId === myId) || (c.fromHR && c.toUserId === myId));
+  renderChatMessages('chat-display', visible);
+}
+
+// =====================
+// HR CHAT THREADS
+// =====================
+function initHrChatThreads() {
+  const chats    = getAllChats();
+  const tabsEl   = document.getElementById('hr-employee-tabs');
+  const chatBox  = document.getElementById('hr-chat-display');
+  const replyRow = document.getElementById('hr-reply-row');
+
+  const seen = {};
+  const employees = [];
+  chats.forEach(c => {
+    if (!c.fromHR && !seen[c.userId]) {
+      seen[c.userId] = true;
+      employees.push({ userId: c.userId, userName: c.userName });
+    }
+  });
+
+  if (employees.length === 0) {
+    tabsEl.innerHTML = '<p class="empty-msg">' + t('empty') + '</p>';
+    chatBox.innerHTML = '';
+    replyRow.classList.add('hidden');
+    return;
+  }
+
+  tabsEl.innerHTML = '';
+  employees.forEach(emp => {
+    const btn = document.createElement('button');
+    btn.className = 'emp-tab' + (activeHrThread && activeHrThread.userId === emp.userId ? ' active' : '');
+    btn.textContent = emp.userName;
+    btn.onclick = () => selectHrThread(emp.userId, emp.userName);
+    tabsEl.appendChild(btn);
+  });
+
+  if (activeHrThread) {
+    renderHrThread(activeHrThread.userId);
+    replyRow.classList.remove('hidden');
+  } else {
+    chatBox.innerHTML = '<p class="empty-msg" style="padding:20px 0;text-align:center">← Select an employee to view their messages</p>';
+    replyRow.classList.add('hidden');
+  }
+}
+
+function selectHrThread(userId, userName) {
+  activeHrThread = { userId, userName };
+  initHrChatThreads();
+}
+
+function renderHrThread(userId) {
+  const chats   = getAllChats();
+  const visible = chats.filter(c => (!c.fromHR && c.userId === userId) || (c.fromHR && c.toUserId === userId));
+  renderChatMessages('hr-chat-display', visible);
+}
+
+function sendHrReply() {
+  if (!activeHrThread) return;
+  const input = document.getElementById('hr-reply-input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+  const chats = getAllChats();
+  chats.push({
+    userId: 'hr',
+    userName: currentUser.name + ' (HR)',
+    msg,
+    fromHR: true,
+    toUserId: activeHrThread.userId,
+    time: new Date().toLocaleString()
+  });
+  saveStorage('chats', chats);
+  input.value = '';
+  renderHrThread(activeHrThread.userId);
+}
+
+// =====================
+// CHAT RENDERER (shared)
+// =====================
+function renderChatMessages(containerId, msgs) {
   const box = document.getElementById(containerId);
   if (!box) return;
   box.innerHTML = '';
@@ -409,7 +475,7 @@ function renderChat(containerId, msgs) {
   }
   msgs.forEach(m => {
     const bubble = document.createElement('div');
-    bubble.className = 'chat-bubble';
+    bubble.className = 'chat-bubble' + (m.fromHR ? ' hr-reply' : '');
     const nameHtml = m.userName ? '<div class="bubble-name">' + escapeHtml(m.userName) + '</div>' : '';
     bubble.innerHTML = nameHtml + '<span>' + escapeHtml(m.msg) + '</span><div class="meta">' + m.time + '</div>';
     box.appendChild(bubble);
@@ -421,45 +487,39 @@ function renderChat(containerId, msgs) {
 // HR DASHBOARD
 // =====================
 function refreshDashboard() {
-  const moods = getAllMoods();
-  const vacations = getAllVacations();
+  const moods      = getAllMoods();
+  const vacations  = getAllVacations();
   const complaints = getAllComplaints();
-  const chats = getAllChats();
 
-  document.getElementById('stat-vacations').textContent = vacations.length;
+  document.getElementById('stat-vacations').textContent  = vacations.length;
   document.getElementById('stat-complaints').textContent = complaints.length;
 
   if (moods.length === 0) {
-    document.getElementById('stat-avg-mood').textContent = '—';
+    document.getElementById('stat-avg-mood').textContent  = '—';
     document.getElementById('stat-mood-score').textContent = '—';
     document.getElementById('burnout-alert').classList.add('hidden');
   } else {
-    const total = moods.reduce((s, m) => s + m.score, 0);
-    const avg = total / moods.length;
+    const avg     = moods.reduce((s, m) => s + m.score, 0) / moods.length;
     const rounded = Math.round(avg * 10) / 10;
-    document.getElementById('stat-avg-mood').textContent = avg < 1.5 ? '😢' : avg < 2.5 ? '😐' : '😄';
+    document.getElementById('stat-avg-mood').textContent  = avg < 1.5 ? '😢' : avg < 2.5 ? '😐' : '😄';
     document.getElementById('stat-mood-score').textContent = rounded + ' / 3';
     document.getElementById('burnout-alert').classList.toggle('hidden', avg >= 1.8);
   }
 
   renderList('hr-vacations', vacations, v =>
-    '<strong>' + escapeHtml(v.name) + '</strong>' +
-    escapeHtml(v.from) + ' → ' + escapeHtml(v.to) +
-    '<div class="list-meta">' + escapeHtml(v.reason) + '</div>' +
-    '<div class="list-meta">' + v.time + '</div>'
+    '<strong>' + escapeHtml(v.name) + '</strong>' + escapeHtml(v.from) + ' → ' + escapeHtml(v.to) +
+    '<div class="list-meta">' + escapeHtml(v.reason) + '</div><div class="list-meta">' + v.time + '</div>'
   );
-
   renderList('hr-complaints', complaints, c =>
     '<span>' + escapeHtml(c.text) + '</span><div class="list-meta">' + c.time + '</div>'
   );
-
-  renderChat('hr-chat-display', chats);
-
   renderList('hr-mood-log', moods, m =>
     '<strong>' + MOOD_EMOJIS[m.mood] + ' ' + escapeHtml(m.userName || 'Employee') + '</strong>' +
     '<span style="margin-left:6px;color:var(--text-muted);font-size:12px">' + m.mood + '</span>' +
     '<div class="list-meta">' + m.time + '</div>'
   );
+
+  initHrChatThreads();
 }
 
 function renderList(containerId, items, tplFn) {
@@ -481,7 +541,122 @@ function renderList(containerId, items, tplFn) {
 function clearAll() {
   if (!confirm('Clear ALL data for ALL employees? This cannot be undone.')) return;
   ['moods','vacations','complaints','chats'].forEach(k => localStorage.removeItem('wp_' + k));
+  activeHrThread = null;
   refreshDashboard();
+}
+
+// =====================
+// ACCOUNT MODAL
+// =====================
+function openAccountModal() {
+  const account = findAccount(currentUser.id);
+  document.getElementById('acct-name').value     = account ? account.name : currentUser.name;
+  document.getElementById('acct-cur-pass').value = '';
+  document.getElementById('acct-new-pass').value = '';
+  document.getElementById('acct-name-msg').textContent = '';
+  document.getElementById('acct-pass-msg').textContent = '';
+
+  if (currentUser.role === 'hr') {
+    document.getElementById('acct-hr-section').classList.remove('hidden');
+    renderAccountUserList();
+  } else {
+    document.getElementById('acct-hr-section').classList.add('hidden');
+  }
+
+  document.getElementById('account-modal').classList.remove('hidden');
+}
+
+function closeAccountModal(event) {
+  if (event && event.target !== document.getElementById('account-modal')) return;
+  document.getElementById('account-modal').classList.add('hidden');
+}
+
+function saveAccountName() {
+  const newName = document.getElementById('acct-name').value.trim();
+  if (!newName) { showFeedback('acct-name-msg', 'Name cannot be empty.', 'error'); return; }
+
+  const accounts = getAccounts();
+  const idx      = accounts.findIndex(a => a.id === currentUser.id);
+  if (idx === -1) return;
+  accounts[idx].name = newName;
+  saveAccounts(accounts);
+  currentUser.name = newName;
+
+  const initials = newName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  document.getElementById('user-avatar').textContent      = initials;
+  document.getElementById('user-name-display').textContent = newName;
+
+  const sessionKey = localStorage.getItem('wp_session') ? 'wp_session' : null;
+  if (sessionKey) {
+    const raw = localStorage.getItem(sessionKey);
+    if (raw) {
+      const s = JSON.parse(raw);
+      s.name = newName;
+      localStorage.setItem(sessionKey, JSON.stringify(s));
+    }
+  }
+
+  showFeedback('acct-name-msg', 'Name updated!', 'success');
+}
+
+function saveAccountPassword() {
+  const curPass = document.getElementById('acct-cur-pass').value;
+  const newPass = document.getElementById('acct-new-pass').value;
+  if (!curPass || !newPass) { showFeedback('acct-pass-msg', 'Fill in both fields.', 'error'); return; }
+  if (newPass.length < 6)   { showFeedback('acct-pass-msg', t('err_pass_short'), 'error'); return; }
+
+  const accounts = getAccounts();
+  const idx      = accounts.findIndex(a => a.id === currentUser.id);
+  if (idx === -1) return;
+  if (accounts[idx].password !== curPass) { showFeedback('acct-pass-msg', 'Current password is incorrect.', 'error'); return; }
+
+  accounts[idx].password = newPass;
+  saveAccounts(accounts);
+  document.getElementById('acct-cur-pass').value = '';
+  document.getElementById('acct-new-pass').value = '';
+  showFeedback('acct-pass-msg', 'Password changed!', 'success');
+}
+
+function confirmDeleteAccount() {
+  if (!confirm('Delete your account permanently? This cannot be undone.')) return;
+  let accounts = getAccounts();
+  accounts     = accounts.filter(a => a.id !== currentUser.id);
+  saveAccounts(accounts);
+  document.getElementById('account-modal').classList.add('hidden');
+  handleLogout();
+}
+
+function renderAccountUserList() {
+  const container = document.getElementById('acct-user-list');
+  const accounts  = getAccounts().filter(a => a.role !== 'hr');
+  if (accounts.length === 0) {
+    container.innerHTML = '<p class="empty-msg">No employee accounts.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  accounts.forEach(acc => {
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.style.display = 'flex';
+    div.style.justifyContent = 'space-between';
+    div.style.alignItems = 'center';
+    div.innerHTML =
+      '<div>' +
+        '<strong style="color:var(--primary)">' + escapeHtml(acc.name) + '</strong>' +
+        '<div class="list-meta">' + escapeHtml(acc.id) + '</div>' +
+      '</div>' +
+      '<button class="btn-danger" style="width:auto;padding:5px 12px;font-size:12px;margin-top:0" ' +
+        'onclick="hrDeleteAccount(\'' + escapeHtml(acc.id) + '\')">Delete</button>';
+    container.appendChild(div);
+  });
+}
+
+function hrDeleteAccount(accountId) {
+  if (!confirm('Delete account for ' + accountId + '? This cannot be undone.')) return;
+  let accounts = getAccounts();
+  accounts     = accounts.filter(a => a.id !== accountId);
+  saveAccounts(accounts);
+  renderAccountUserList();
 }
 
 // =====================
@@ -501,7 +676,7 @@ function showFeedback(id, msg, type) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = msg;
-  el.className = 'feedback-msg ' + type;
+  el.className   = 'feedback-msg ' + type;
   setTimeout(() => { el.textContent = ''; el.className = 'feedback-msg'; }, 3500);
 }
 
