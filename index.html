@@ -23,7 +23,7 @@
 
       <div class="form-group">
         <label class="form-label" data-i18n="login_id_label">Email or Phone Number</label>
-        <input type="text" id="login-id" class="input" data-i18n-placeholder="login_id_placeholder" placeholder="Email or phone number" />
+        <input type="text" id="login-id" class="input" autocapitalize="none" autocorrect="off" spellcheck="false" data-i18n-placeholder="login_id_placeholder" placeholder="Email or phone number" />
       </div>
       <div class="form-group">
         <label class="form-label" data-i18n="login_pass_label">Password</label>
@@ -40,9 +40,36 @@
       </div>
       <div id="login-error" class="auth-error hidden"></div>
       <button class="btn-primary" onclick="handleLogin()" data-i18n="login_btn">Sign In</button>
+      <p class="auth-switch" style="margin:0">
+        <button class="link-btn" onclick="showAuthPanel('forgot')" data-i18n="forgot_password">Forgot password?</button>
+      </p>
       <p class="auth-switch">
         <span data-i18n="no_account">Don't have an account?</span>
         <button class="link-btn" onclick="showAuthPanel('signup')" data-i18n="go_signup">Create one</button>
+      </p>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div class="auth-card hidden" id="forgot-panel">
+      <h2 class="auth-title" data-i18n="forgot_title">Reset Password</h2>
+      <p class="auth-sub" data-i18n="forgot_sub">Enter your email/phone and choose a new password.</p>
+
+      <div class="form-group">
+        <label class="form-label" data-i18n="login_id_label">Email or Phone Number</label>
+        <input type="text" id="forgot-id" class="input" autocapitalize="none" autocorrect="off" spellcheck="false" data-i18n-placeholder="login_id_placeholder" placeholder="Email or phone number" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="forgot_new_pass_label">New Password</label>
+        <div class="input-eye-wrap">
+          <input type="password" id="forgot-pass" class="input" data-i18n-placeholder="forgot_new_pass_placeholder" placeholder="New password (min 6 chars)" onkeydown="if(event.key==='Enter')handleForgotPassword()" />
+          <button type="button" class="eye-btn" onclick="toggleEye('forgot-pass',this)">👁</button>
+        </div>
+      </div>
+
+      <div id="forgot-error" class="auth-error hidden"></div>
+      <button class="btn-primary" onclick="handleForgotPassword()" data-i18n="forgot_btn">Reset Password</button>
+      <p class="auth-switch">
+        <button class="link-btn" onclick="showAuthPanel('login')" data-i18n="back_to_login">← Back to login</button>
       </p>
     </div>
 
@@ -57,7 +84,7 @@
       </div>
       <div class="form-group">
         <label class="form-label" data-i18n="signup_id_label">Email or Phone Number</label>
-        <input type="text" id="signup-id" class="input" placeholder="Email or phone number" />
+        <input type="text" id="signup-id" class="input" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Email or phone number" />
       </div>
       <div class="form-group">
         <label class="form-label" data-i18n="signup_pass_label">Password</label>
@@ -305,6 +332,22 @@
         <div class="modal-divider"></div>
         <button class="btn-danger" onclick="confirmDeleteAccount()">🗑 Delete My Account</button>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM MODAL -->
+  <div id="confirm-modal" class="modal-overlay hidden" onclick="closeConfirm(event)">
+    <div class="modal-box confirm-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">⚠️ Are you sure?</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message" class="confirm-text">Are you sure?</p>
+        <div class="confirm-actions">
+          <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
+          <button class="btn-danger" id="confirm-ok" onclick="acceptConfirm()">Yes, delete</button>
+        </div>
       </div>
     </div>
   </div>
