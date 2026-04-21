@@ -878,13 +878,34 @@ function renderList(containerId, items, tplFn) {
 // CLEAR ALL
 // =====================
 function clearAll() {
-  if (!confirm("Clear ALL data for ALL employees? This cannot be undone."))
-    return;
-  ["moods", "vacations", "complaints", "chats"].forEach((k) =>
-    localStorage.removeItem("wp_" + k),
-  );
-  activeHrThread = null;
-  refreshDashboard();
+  showConfirm("Clear ALL data for ALL employees? This cannot be undone.", () => {
+    ["moods", "vacations", "complaints", "chats"].forEach((k) =>
+      localStorage.removeItem("wp_" + k),
+    );
+    activeHrThread = null;
+    refreshDashboard();
+  });
+}
+
+// =====================
+// CUSTOM CONFIRM (mobile-safe replacement for native confirm())
+// =====================
+let _confirmCallback = null;
+function showConfirm(message, onAccept) {
+  document.getElementById("confirm-message").textContent = message;
+  _confirmCallback = onAccept;
+  document.getElementById("confirm-modal").classList.remove("hidden");
+}
+function closeConfirm(event) {
+  if (event && event.target !== document.getElementById("confirm-modal")) return;
+  document.getElementById("confirm-modal").classList.add("hidden");
+  _confirmCallback = null;
+}
+function acceptConfirm() {
+  const cb = _confirmCallback;
+  _confirmCallback = null;
+  document.getElementById("confirm-modal").classList.add("hidden");
+  if (typeof cb === "function") cb();
 }
 
 // =====================
@@ -980,8 +1001,11 @@ function saveAccountPassword() {
 }
 
 function confirmDeleteAccount() {
-  if (!confirm("Delete your account permanently? This cannot be undone."))
-    return;
+  showConfirm("Delete your account permanently? This cannot be undone.", () => {
+    doDeleteAccount();
+  });
+}
+function doDeleteAccount() {
   let accounts = getAccounts();
   accounts = accounts.filter((a) => a.id !== currentUser.id);
   saveAccounts(accounts);
@@ -1021,12 +1045,12 @@ function renderAccountUserList() {
 }
 
 function hrDeleteAccount(accountId) {
-  if (!confirm("Delete account for " + accountId + "? This cannot be undone."))
-    return;
-  let accounts = getAccounts();
-  accounts = accounts.filter((a) => a.id !== accountId);
-  saveAccounts(accounts);
-  renderAccountUserList();
+  showConfirm("Delete account for " + accountId + "? This cannot be undone.", () => {
+    let accounts = getAccounts();
+    accounts = accounts.filter((a) => a.id !== accountId);
+    saveAccounts(accounts);
+    renderAccountUserList();
+  });
 }
 
 // =====================
