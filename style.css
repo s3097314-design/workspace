@@ -715,3 +715,42 @@ html[dir="rtl"] .chat-bubble.hr-reply { text-align: left; border-radius: 10px 10
   background: var(--card-border);
   margin: 4px 0;
 }
+
+/* ===========================
+   CONFIRM MODAL
+=========================== */
+.confirm-box { max-width: 400px; }
+.confirm-text {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.confirm-actions button {
+  flex: 1;
+  min-width: 120px;
+  min-height: 46px;
+  font-size: 14px;
+  margin-top: 0;
+}
+.btn-cancel {
+  background: var(--mood-btn-bg);
+  border: 1px solid var(--mood-btn-border);
+  border-radius: 10px;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  padding: 12px 16px;
+}
+.btn-cancel:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-glow);
+}
